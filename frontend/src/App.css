@@ -1,0 +1,64 @@
+import { useState, useEffect } from 'react';
+import { supabase } from './supabaseClient';
+import Navbar from './components/Navbar';
+
+function App() {
+  const [session, setSession] = useState(null);
+
+  useEffect(() => {
+    // Verifica se já existe sessão ativa ao carregar
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    // Ouve mudanças no login (entrou ou saiu)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-gray-100 pb-10">
+      {/* Barra Superior com Login */}
+      <Navbar session={session} />
+
+      <div className="max-w-7xl mx-auto px-4">
+        {!session ? (
+          // Tela de boas-vindas se não estiver logado
+          <div className="text-center mt-20">
+            <h2 className="text-3xl font-bold text-gray-700">Bem-vindo ao seu Controle Financeiro</h2>
+            <p className="text-gray-500 mt-2">Faça login acima para ver seus dados.</p>
+          </div>
+        ) : (
+          // AQUI VAI O DASHBOARD (Gráficos e Tabelas)
+          <div>
+            <h2 className="text-2xl font-bold mb-4">Resumo do Mês</h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+               {/* Cards de Exemplo (Depois preenchemos com dados reais) */}
+               <div className="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
+                  <p className="text-gray-500 text-sm">Total Receitas</p>
+                  <p className="text-2xl font-bold text-green-600">R$ 0,00</p>
+               </div>
+               <div className="bg-white p-4 rounded-lg shadow border-l-4 border-red-500">
+                  <p className="text-gray-500 text-sm">Total Despesas</p>
+                  <p className="text-2xl font-bold text-red-600">R$ 0,00</p>
+               </div>
+            </div>
+            
+            {/* Espaço para o Formulário e Gráficos */}
+            <div className="bg-white p-6 rounded-lg shadow mb-6">
+                <h3 className="font-bold mb-4">+ Nova Transação</h3>
+                <p className="text-gray-400">O formulário ficará aqui...</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default App;
