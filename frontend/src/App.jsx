@@ -3,34 +3,27 @@ import { supabase } from './supabaseClient';
 import Navbar from './components/Navbar';
 import FormularioTransacao from './components/FormularioTransacao';
 import DashboardGraficos from './components/DashboardGraficos';
-import { TrendingUp, TrendingDown, DollarSign, Wallet, Trash2 } from 'lucide-react'; // <--- Adicionei Trash2 aqui
+import { TrendingUp, TrendingDown, DollarSign, Wallet, Trash2 } from 'lucide-react';
 
 function App() {
   const [session, setSession] = useState(null);
   const [transacoes, setTransacoes] = useState([]);
-  const [orcamentos, setOrcamentos] = useState([]); 
-  
   const [resumo, setResumo] = useState({ receitas: 0, despesas: 0, saldo: 0 });
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) carregarDados();
+      if (session) buscarTransacoes();
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session) carregarDados();
-      else { setTransacoes([]); setOrcamentos([]); }
+      if (session) buscarTransacoes();
+      else setTransacoes([]);
     });
 
     return () => subscription.unsubscribe();
   }, []);
-
-  const carregarDados = async () => {
-    buscarTransacoes();
-    buscarOrcamentos();
-  };
 
   const buscarTransacoes = async () => {
     const { data } = await supabase.from('transacoes').select('*').order('data', { ascending: false });
@@ -40,29 +33,13 @@ function App() {
     }
   };
 
-  const buscarOrcamentos = async () => {
-    const { data } = await supabase.from('orcamentos').select('*');
-    if (data) setOrcamentos(data);
-  };
-
-  // --- NOVA FUNÇÃO DE DELETAR ---
   const deletarTransacao = async (id) => {
-    // 1. Pergunta se o usuário tem certeza
-    const confirmacao = window.confirm("Tem certeza que deseja apagar esta transação?");
+    const confirmacao = window.confirm("Apagar esta transação?");
     if (!confirmacao) return;
 
-    // 2. Manda o comando para o Supabase
-    const { error } = await supabase
-      .from('transacoes')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      alert("Erro ao deletar: " + error.message);
-    } else {
-      // 3. Atualiza a tela
-      carregarDados();
-    }
+    const { error } = await supabase.from('transacoes').delete().eq('id', id);
+    if (error) alert(error.message);
+    else buscarTransacoes();
   };
 
   const calcularTotais = (dados) => {
@@ -84,74 +61,70 @@ function App() {
 
       <div className="max-w-7xl mx-auto px-4">
         {!session ? (
-          <div className="text-center mt-20">
-            <h2 className="text-3xl font-bold text-gray-700">Bem-vindo ao Controle Financeiro</h2>
-            <p className="text-gray-500 mt-2">Faça login acima para começar.</p>
+          <div className="text-center mt-20 px-4">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-700">Controle Financeiro</h2>
+            <p className="text-gray-500 mt-2">Faça login para começar.</p>
           </div>
         ) : (
           <>
-            <h2 className="text-2xl font-bold mb-4 text-gray-800">Resumo do Mês</h2>
+            <h2 className="text-xl md:text-2xl font-bold mb-4 text-gray-800">Resumo</h2>
             
-            {/* CARDS */}
+            {/* CARDS RESPONSIVOS (Grid cols 1 no mobile, 3 no PC) */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-               <div className="bg-white p-4 rounded-lg shadow border-l-4 border-green-500 flex justify-between">
-                  <div><p className="text-gray-500 text-sm">Total Receitas</p><p className="text-2xl font-bold text-green-600">{formatarMoeda(resumo.receitas)}</p></div>
-                  <TrendingUp className="text-green-200" size={32} />
+               <div className="bg-white p-4 rounded-lg shadow border-l-4 border-green-500 flex justify-between items-center">
+                  <div><p className="text-gray-500 text-xs md:text-sm">Receitas</p><p className="text-xl md:text-2xl font-bold text-green-600">{formatarMoeda(resumo.receitas)}</p></div>
+                  <TrendingUp className="text-green-200" size={28} />
                </div>
-               <div className="bg-white p-4 rounded-lg shadow border-l-4 border-red-500 flex justify-between">
-                  <div><p className="text-gray-500 text-sm">Total Despesas</p><p className="text-2xl font-bold text-red-600">{formatarMoeda(resumo.despesas)}</p></div>
-                  <TrendingDown className="text-red-200" size={32} />
+               <div className="bg-white p-4 rounded-lg shadow border-l-4 border-red-500 flex justify-between items-center">
+                  <div><p className="text-gray-500 text-xs md:text-sm">Despesas</p><p className="text-xl md:text-2xl font-bold text-red-600">{formatarMoeda(resumo.despesas)}</p></div>
+                  <TrendingDown className="text-red-200" size={28} />
                </div>
-               <div className="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500 flex justify-between">
-                  <div><p className="text-gray-500 text-sm">Saldo Atual</p><p className={`text-2xl font-bold ${resumo.saldo >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{formatarMoeda(resumo.saldo)}</p></div>
-                  <DollarSign className="text-blue-200" size={32} />
+               <div className="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500 flex justify-between items-center">
+                  <div><p className="text-gray-500 text-xs md:text-sm">Saldo</p><p className={`text-xl md:text-2xl font-bold ${resumo.saldo >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{formatarMoeda(resumo.saldo)}</p></div>
+                  <DollarSign className="text-blue-200" size={28} />
                </div>
             </div>
 
-            {/* FORMULÁRIO */}
-            <FormularioTransacao aoSalvar={carregarDados} />
+            <FormularioTransacao aoSalvar={buscarTransacoes} />
 
-            {/* GRÁFICOS */}
-            <DashboardGraficos transacoes={transacoes} orcamentos={orcamentos} />
+            <DashboardGraficos transacoes={transacoes} />
 
-            {/* LISTA DE TRANSAÇÕES */}
-            <div className="bg-white rounded-lg shadow overflow-hidden mt-8">
+            {/* LISTA DE TRANSAÇÕES com Scroll Horizontal */}
+            <div className="bg-white rounded-lg shadow mt-8 overflow-hidden">
               <div className="p-4 border-b bg-gray-50">
-                <h3 className="font-bold text-gray-700 flex items-center gap-2"><Wallet size={20} /> Histórico de Transações</h3>
+                <h3 className="font-bold text-gray-700 flex items-center gap-2"><Wallet size={20} /> Histórico</h3>
               </div>
-              {transacoes.length === 0 ? <p className="p-6 text-gray-500 text-center">Sem dados.</p> : (
-                <table className="w-full text-sm text-left">
-                  <thead className="text-gray-600 font-medium border-b">
-                    <tr>
-                        <th className="px-4 py-3">Descrição</th>
-                        <th className="px-4 py-3">Categ.</th>
-                        <th className="px-4 py-3 text-right">Valor</th>
-                        <th className="px-4 py-3 text-center">Ações</th> {/* Nova Coluna */}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {transacoes.map(t => (
-                      <tr key={t.id} className="hover:bg-gray-50 group">
-                        <td className="px-4 py-3">{t.descricao}</td>
-                        <td className="px-4 py-3"><span className="bg-gray-100 px-2 py-1 rounded text-xs">{t.categoria}</span></td>
-                        <td className={`px-4 py-3 text-right font-bold ${t.tipo === 'receita' ? 'text-green-600' : 'text-red-600'}`}>
-                          {t.tipo === 'receita' ? '+' : '-'} {formatarMoeda(t.valor)}
-                        </td>
-                        {/* Botão de Excluir */}
-                        <td className="px-4 py-3 text-center">
-                            <button 
-                                onClick={() => deletarTransacao(t.id)}
-                                className="text-gray-400 hover:text-red-600 transition p-1"
-                                title="Excluir Transação"
-                            >
-                                <Trash2 size={18} />
-                            </button>
-                        </td>
+              
+              <div className="overflow-x-auto"> {/* <--- Mágica aqui */}
+                {transacoes.length === 0 ? <p className="p-6 text-gray-500 text-center">Sem dados.</p> : (
+                  <table className="w-full text-sm text-left min-w-[500px]">
+                    <thead className="text-gray-600 font-medium border-b bg-gray-50">
+                      <tr>
+                          <th className="px-4 py-3">Descrição</th>
+                          <th className="px-4 py-3">Categ.</th>
+                          <th className="px-4 py-3 text-right">Valor</th>
+                          <th className="px-4 py-3 text-center">Excluir</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+                    </thead>
+                    <tbody className="divide-y">
+                      {transacoes.map(t => (
+                        <tr key={t.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-gray-800">{t.descricao}</td>
+                          <td className="px-4 py-3"><span className="bg-gray-100 px-2 py-1 rounded text-xs whitespace-nowrap">{t.categoria}</span></td>
+                          <td className={`px-4 py-3 text-right font-bold whitespace-nowrap ${t.tipo === 'receita' ? 'text-green-600' : 'text-red-600'}`}>
+                            {t.tipo === 'receita' ? '+' : '-'} {formatarMoeda(t.valor)}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                              <button onClick={() => deletarTransacao(t.id)} className="text-gray-300 hover:text-red-600 p-2">
+                                  <Trash2 size={16} />
+                              </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
             </div>
           </>
         )}
